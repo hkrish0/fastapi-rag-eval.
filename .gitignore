@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# Environment
+.env
+
+# Regenerable data (rebuild via `uv run python scripts/ingest.py`)
+data/raw/
+data/chroma/
+
+# Editors
+.vscode/
+.idea/
+.DS_Store
