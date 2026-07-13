@@ -71,14 +71,19 @@ chunks, respecting markdown structure (don't split mid-code-block, prefer splitt
 and attaching source metadata (file path, section heading) to each chunk.
 
 **Acceptance criteria:**
-- [ ] Chunks stay under the configured max size (from `config.py`)
-- [ ] Code blocks are never split across chunk boundaries
-- [ ] Each chunk carries its source file path and nearest heading as metadata
+- [x] Chunks stay under the configured max size (from `config.py`), except a fenced code block
+      that alone exceeds max size (kept whole rather than split — verified against the real
+      corpus, largest such case is 3600 chars of terminal output in `deployment/server-workers.md`)
+- [x] Code blocks are never split across chunk boundaries
+- [x] Each chunk carries its source file path and nearest heading as metadata
 
 **Verification:**
-- [ ] `uv run pytest tests/unit/test_chunker.py -v` passes
-- [ ] Tests cover: a doc with nested headers, a doc with a large code block, a doc shorter than
-      max chunk size (single chunk, no split)
+- [x] `uv run pytest tests/unit/test_chunker.py -v` passes (5 tests)
+- [x] Tests cover: nested headers, a large code block, a doc shorter than max chunk size, and a
+      regression case (a long blank-line-free bullet list, found via manual verification against
+      `release-notes.md`, which the initial blank-line-based splitter treated as one 24,959-char
+      atomic block — fixed by splitting non-code content per line instead of per paragraph)
+- [x] Manual check: ran chunker against the full real corpus (154 files → 2102 chunks)
 
 **Dependencies:** Task 1
 
