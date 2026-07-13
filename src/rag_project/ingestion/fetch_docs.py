@@ -21,6 +21,8 @@ def fetch_docs(dest_dir: str | Path = "data/raw", ref: str = "master") -> Path:
     response = httpx.get(url, follow_redirects=True, timeout=60.0)
     response.raise_for_status()
 
+    resolved_dest = dest.resolve()
+
     with tarfile.open(fileobj=io.BytesIO(response.content), mode="r:gz") as tar:
         for member in tar.getmembers():
             if not member.isfile():
@@ -31,10 +33,14 @@ def fetch_docs(dest_dir: str | Path = "data/raw", ref: str = "master") -> Path:
             relative_path = member.name[marker_index + len(DOCS_SUBPATH) :]
             if not relative_path:
                 continue
+
+            target = (dest / relative_path).resolve()
+            if not target.is_relative_to(resolved_dest):
+                continue  # tar-slip guard: skip entries that escape dest
+
             extracted_file = tar.extractfile(member)
             if extracted_file is None:
                 continue
-            target = dest / relative_path
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(extracted_file.read())
 

@@ -50,6 +50,36 @@ def test_fetch_docs_extracts_only_matching_docs_subpath(
     assert "master" in called_url
 
 
+def test_fetch_docs_rejects_tar_slip_paths(mocker: MockerFixture, tmp_path: Path) -> None:
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+        def add(name: str, content: bytes) -> None:
+            info = tarfile.TarInfo(name=name)
+            info.size = len(content)
+            tar.addfile(info, io.BytesIO(content))
+
+        add("fastapi-master/docs/en/docs/index.md", b"# FastAPI")
+        # Malicious/corrupt entry attempting to escape dest_dir via traversal.
+        add(
+            "fastapi-master/docs/en/docs/../../../../../../tmp/evil.md",
+            b"escaped!",
+        )
+
+    fake_response = mocker.Mock()
+    fake_response.content = buffer.getvalue()
+    fake_response.raise_for_status = mocker.Mock()
+    mocker.patch(
+        "rag_project.ingestion.fetch_docs.httpx.get", return_value=fake_response
+    )
+
+    dest = tmp_path / "raw"
+    fetch_docs(dest_dir=dest, ref="master")
+
+    assert (dest / "index.md").read_bytes() == b"# FastAPI"
+    escaped_files = list(tmp_path.rglob("evil.md"))
+    assert escaped_files == []
+
+
 def test_fetch_docs_is_safe_to_rerun(mocker: MockerFixture, tmp_path: Path) -> None:
     fake_response = mocker.Mock()
     fake_response.content = _make_fake_archive()
