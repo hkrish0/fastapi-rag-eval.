@@ -45,9 +45,9 @@ Python call first, then wrap it in an API, then containerize, then add the eval 
 - [ ] Task 4: Embedding indexer + ingest CLI
 
 ### Checkpoint: Ingestion
-- [ ] `uv run python scripts/ingest.py` populates `data/chroma` from a fresh clone
-- [ ] Re-running ingest does not duplicate vectors (idempotency check)
-- [ ] Unit tests for chunker pass
+- [x] `uv run python scripts/ingest.py` populates `data/chroma` from a fresh clone
+- [x] Re-running ingest does not duplicate vectors (idempotency check)
+- [x] Unit tests for chunker pass
 
 ### Phase 2: Retrieval + QA Graph
 
