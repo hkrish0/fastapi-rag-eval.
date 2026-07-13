@@ -5,16 +5,20 @@
 ### Task 1: Project scaffolding
 
 **Description:** Set up the uv-managed Python project skeleton: `pyproject.toml` with all
-planned dependencies (langgraph, langchain-core, chromadb, langchain-chroma, langchain-openai,
-fastapi, uvicorn, pydantic-settings, ragas, ruff, mypy, pytest, pytest-mock), directory
-structure per SPEC.md, `config.py` (pydantic-settings reading API keys/model names/paths from
-env), `.env.example`, `.gitignore` (excludes `data/raw`, `data/chroma`, `.env`).
+planned dependencies (langgraph, langchain-core, chromadb, langchain-chroma, langchain-anthropic,
+sentence-transformers, langchain-huggingface, fastapi, uvicorn, pydantic-settings, ragas, ruff,
+mypy, pytest, pytest-mock), directory structure per SPEC.md, `config.py` (pydantic-settings
+reading API keys/model names/paths from env), `.env.example`, `.gitignore` (excludes `data/raw`,
+`data/chroma`, `.env`).
+
+*(Updated after Task 1: switched from OpenAI to Claude (generation/eval judge) + local
+sentence-transformers (embeddings) — no OpenAI credit available. See SPEC.md Tech Stack.)*
 
 **Acceptance criteria:**
 - [x] `uv sync` installs all dependencies without errors
 - [x] `src/rag_project/` package structure exists matching SPEC.md's Project Structure section
 - [x] `config.py` loads settings from `.env` via pydantic-settings with sane defaults/required
-      fields for `OPENAI_API_KEY`, embedding model name, generation model name, chunk size,
+      fields for `ANTHROPIC_API_KEY`, embedding model name, generation model name, chunk size,
       Chroma persist path
 
 **Verification:**
@@ -22,7 +26,8 @@ env), `.env.example`, `.gitignore` (excludes `data/raw`, `data/chroma`, `.env`).
 - [x] `uv run ruff check .` passes clean
 - [x] `uv run mypy src/` passes clean
 - [x] Manual check: settings-loading mechanism verified with a dummy key (user to add real
-      `.env` from `.env.example` before Task 4, which needs real OpenAI calls)
+      `.env` from `.env.example` before Task 4, which needs to download the local embedding
+      model; Task 6+ needs a real `ANTHROPIC_API_KEY`)
 
 **Dependencies:** None
 
@@ -97,10 +102,11 @@ and attaching source metadata (file path, section heading) to each chunk.
 
 ### Task 4: Embedding indexer + ingest CLI
 
-**Description:** Implement `indexer.py`, which embeds chunks via OpenAI (`text-embedding-3-small`)
-and upserts them into a persisted Chroma collection using deterministic IDs (hash of source path
-+ chunk content) so re-running is idempotent. Wire `fetch_docs.py` → `chunker.py` → `indexer.py`
-together in `scripts/ingest.py` as a single CLI entrypoint.
+**Description:** Implement `indexer.py`, which embeds chunks locally via
+`sentence-transformers` (`BAAI/bge-small-en-v1.5`, no API cost) and upserts them into a
+persisted Chroma collection using deterministic IDs (hash of source path + chunk content) so
+re-running is idempotent. Wire `fetch_docs.py` → `chunker.py` → `indexer.py` together in
+`scripts/ingest.py` as a single CLI entrypoint.
 
 **Acceptance criteria:**
 - [ ] `uv run python scripts/ingest.py` runs fetch → chunk → embed → index end to end
@@ -110,7 +116,7 @@ together in `scripts/ingest.py` as a single CLI entrypoint.
 **Verification:**
 - [ ] Manual check: run ingest twice, compare Chroma collection count before/after second run
       (must be equal)
-- [ ] Unit test mocks the OpenAI embeddings call and verifies deterministic ID generation
+- [ ] Unit test mocks the embedding model call and verifies deterministic ID generation
       (same input → same ID)
 
 **Dependencies:** Tasks 2, 3
@@ -337,7 +343,7 @@ precision, and context recall metrics, writing a timestamped report (JSON or Mar
 ### Task 11: Integration tests
 
 **Description:** Write `tests/integration/` tests covering the real end-to-end path (ingest a
-small fixture corpus or reuse the real one → retrieve → generate) using real OpenAI + Chroma
+small fixture corpus or reuse the real one → retrieve → generate) using the real Anthropic API + Chroma
 calls, marked `@pytest.mark.integration` and excluded from the default `pytest` collection via
 `pyproject.toml`/`pytest.ini` config.
 

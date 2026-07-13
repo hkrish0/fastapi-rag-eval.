@@ -25,9 +25,14 @@ to see quantified retrieval/answer-quality metrics.
 - LangGraph for the retrieval → generation pipeline (explicit state graph, not an opaque chain)
 - Chroma (embedded/persisted to local disk, no separate DB server/container)
 - FastAPI for the HTTP API
-- OpenAI direct: `text-embedding-3-small` (embeddings), `gpt-4o-mini` (generation) — chosen for
-  cost (~$5 budget comfortably covers full dev + eval iteration on a ~200-page doc corpus)
-- RAGAS for evaluation (faithfulness, answer relevance, context precision, context recall)
+- Generation + RAGAS eval judge: Claude direct via `langchain-anthropic`, model
+  `claude-haiku-4-5-20251001` — chosen for cost (~$17 Anthropic API budget, no OpenAI credit
+  available)
+- Embeddings: local `BAAI/bge-small-en-v1.5` via `sentence-transformers`/`langchain-huggingface`
+  — Anthropic has no embeddings endpoint, so embeddings run locally at zero API cost (corpus is
+  ~2100 chunks, fast enough on CPU)
+- RAGAS for evaluation (faithfulness, answer relevance, context precision, context recall),
+  using the local embeddings above and Claude Haiku as the judge LLM
 - Docker for packaging/deployment
 - ruff (lint + format), mypy (type checking), pytest (tests)
 
@@ -79,7 +84,7 @@ scripts/ingest.py            → CLI entrypoint that runs fetch → chunk → in
 
 tests/
   unit/                      → chunking, schema, retrieval-logic tests (embeddings/LLM mocked)
-  integration/                → real Chroma + real OpenAI calls, marked @pytest.mark.integration,
+  integration/                → real Chroma + real Anthropic API calls, marked @pytest.mark.integration,
                                  excluded from default `pytest` run (costs money, run manually)
 
 Dockerfile, docker-compose.yml, pyproject.toml, .env.example, README.md, SPEC.md
@@ -110,8 +115,8 @@ def retrieve(state: QAState, retriever: Retriever, k: int = 4) -> QAState:
 - **Unit tests** (`tests/unit`, default `pytest` run): chunking correctness, schema validation,
   retriever logic — all with mocked embeddings/LLM calls. Must pass before every commit.
 - **Integration tests** (`tests/integration`, `@pytest.mark.integration`): real Chroma + real
-  OpenAI calls end-to-end. Excluded from default `pytest` run (costs money); run manually before
-  merging changes to ingestion, retrieval, or the QA graph.
+  Anthropic API calls end-to-end. Excluded from default `pytest` run (costs money); run manually
+  before merging changes to ingestion, retrieval, or the QA graph.
 - **Eval harness** (RAGAS, `run_eval.py`): not a pass/fail test suite. Generates a scored report
   (faithfulness, answer relevance, context precision, context recall) over the hand-curated
   eval set. Informational only for v1 — no CI gate on scores. Re-run and compare reports whenever
@@ -126,7 +131,7 @@ def retrieve(state: QAState, retriever: Retriever, k: int = 4) -> QAState:
   embedding/generation provider, changing the chunking strategy (requires full re-ingestion),
   moving from informational eval to CI-gated thresholds.
 - **Never:** commit `.env` or API keys; commit `data/raw` or `data/chroma` (regenerable via
-  ingestion); call real OpenAI APIs from unit tests (must be mocked); remove or skip a failing
+  ingestion); call real Anthropic APIs from unit tests (must be mocked); remove or skip a failing
   test without explicit approval.
 
 ## Success Criteria

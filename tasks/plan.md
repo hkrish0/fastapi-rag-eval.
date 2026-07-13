@@ -17,12 +17,15 @@ Python call first, then wrap it in an API, then containerize, then add the eval 
   persisted to `data/chroma`, rebuilt from `data/raw` if ever wiped.
 - **Deterministic chunk IDs (hash of source path + content)** — makes re-ingestion idempotent
   without needing a separate "already indexed" tracking table.
-- **OpenAI direct (`text-embedding-3-small` + `gpt-4o-mini`)** — cheapest viable combo; keeps the
-  $5 budget covering full dev + eval iteration.
+- **Claude direct (`claude-haiku-4-5-20251001`) for generation + RAGAS judge, local
+  `BAAI/bge-small-en-v1.5` embeddings** — no OpenAI credit available; Anthropic has no
+  embeddings endpoint, so embeddings run locally at zero cost while the $17 Anthropic budget
+  covers generation + eval LLM calls (changed from the original OpenAI-only plan — see SPEC.md
+  Tech Stack).
 - **Eval harness is informational, not CI-gated** — v1 goal is to produce and interpret the
   metrics, not build a gating pipeline; gating is a documented future step (see SPEC Boundaries).
-- **Integration tests excluded from default `pytest` run** — they hit real OpenAI, which costs
-  money; unit tests (mocked) are the fast/free default gate.
+- **Integration tests excluded from default `pytest` run** — they hit the real Anthropic API,
+  which costs money; unit tests (mocked) are the fast/free default gate.
 
 ## Task List
 
@@ -95,7 +98,7 @@ Python call first, then wrap it in an API, then containerize, then add the eval 
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| OpenAI cost overrun on $5 budget | Med | Cheapest models chosen; eval set capped at ~20-30 questions; integration tests excluded from routine runs; check token usage before first full ingest/eval |
+| Anthropic cost overrun on $17 budget | Med | Cheapest Claude model (Haiku 4.5) chosen for both generation and eval judge; embeddings run locally at zero cost; eval set capped at ~20-30 questions; integration tests excluded from routine runs |
 | FastAPI docs corpus structure/size unknown until fetched | Low | Task 2 inspects the actual `docs/en/docs` tree before Task 3 finalizes chunking assumptions |
 | Chroma re-ingestion creates duplicate vectors | Med | Deterministic IDs (hash of source path + content) used for upsert, verified by an idempotency check at the Ingestion checkpoint |
 | RAGAS API/version churn breaks eval runner | Low | Pin RAGAS version in `pyproject.toml`; smoke-test on 2-3 questions before running the full eval set |
