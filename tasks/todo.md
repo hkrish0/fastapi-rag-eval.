@@ -11,17 +11,18 @@ structure per SPEC.md, `config.py` (pydantic-settings reading API keys/model nam
 env), `.env.example`, `.gitignore` (excludes `data/raw`, `data/chroma`, `.env`).
 
 **Acceptance criteria:**
-- [ ] `uv sync` installs all dependencies without errors
-- [ ] `src/rag_project/` package structure exists matching SPEC.md's Project Structure section
-- [ ] `config.py` loads settings from `.env` via pydantic-settings with sane defaults/required
+- [x] `uv sync` installs all dependencies without errors
+- [x] `src/rag_project/` package structure exists matching SPEC.md's Project Structure section
+- [x] `config.py` loads settings from `.env` via pydantic-settings with sane defaults/required
       fields for `OPENAI_API_KEY`, embedding model name, generation model name, chunk size,
       Chroma persist path
 
 **Verification:**
-- [ ] `uv sync` exits 0
-- [ ] `uv run ruff check .` passes clean
-- [ ] `uv run mypy src/` passes clean
-- [ ] Manual check: `cp .env.example .env`, fill in a real key, `uv run python -c "from rag_project.config import get_settings; print(get_settings())"` prints loaded settings
+- [x] `uv sync` exits 0
+- [x] `uv run ruff check .` passes clean
+- [x] `uv run mypy src/` passes clean
+- [x] Manual check: settings-loading mechanism verified with a dummy key (user to add real
+      `.env` from `.env.example` before Task 4, which needs real OpenAI calls)
 
 **Dependencies:** None
 
@@ -42,15 +43,16 @@ env), `.env.example`, `.gitignore` (excludes `data/raw`, `data/chroma`, `.env`).
 shell script) so `scripts/ingest.py` can call it directly.
 
 **Acceptance criteria:**
-- [ ] Running fetch populates `data/raw/` with the FastAPI markdown docs tree
-- [ ] Re-running fetch is safe (overwrites/updates rather than erroring or duplicating)
-- [ ] Function signature allows specifying a target ref/branch (default: latest default branch)
+- [x] Running fetch populates `data/raw/` with the FastAPI markdown docs tree
+- [x] Re-running fetch is safe (overwrites/updates rather than erroring or duplicating)
+- [x] Function signature allows specifying a target ref/branch (default: latest default branch,
+      `master`)
 
 **Verification:**
-- [ ] Manual check: run fetch, confirm `data/raw/` contains recognizable FastAPI doc files
-      (e.g. `docs/en/docs/tutorial/first-steps.md` or equivalent path)
-- [ ] Unit test with a mocked network/git call verifies the function constructs correct
-      source/destination paths
+- [x] Manual check: fetched real corpus, 154 markdown files landed in `data/raw/`
+      (e.g. `data/raw/tutorial/first-steps.md`)
+- [x] Unit test with a mocked `httpx.get` call verifies extraction filters to the
+      `docs/en/docs/` subpath and rerun doesn't duplicate/leave stale files
 
 **Dependencies:** Task 1
 
