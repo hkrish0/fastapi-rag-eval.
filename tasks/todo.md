@@ -403,14 +403,27 @@ running the dev server, running Docker, and running the eval harness. Do a final
 every SPEC.md Success Criteria item is actually met.
 
 **Acceptance criteria:**
-- [ ] A reader unfamiliar with the project can follow the README to get a working local
+- [x] A reader unfamiliar with the project can follow the README to get a working local
       instance and a working eval report
-- [ ] Every bullet in SPEC.md's Success Criteria section is checked off with evidence (command
-      run + observed result)
+- [x] Every bullet in SPEC.md's Success Criteria section is checked off with evidence (command
+      run + observed result) — see the Checkpoint: Complete section below
 
 **Verification:**
-- [ ] Manual check: follow the README from a clean clone (or mentally trace each command)
-- [ ] Re-run `uv run pytest`, `uv run ruff check .`, ingest, eval — all pass/succeed
+- [x] Manual check: traced the README's setup → ingest → API → Docker → eval → test sections
+      against what was actually built and verified across Tasks 1-11
+- [x] Re-ran `uv run pytest` (33 passed), `uv run ruff check .` (clean), `uv run mypy src/
+      scripts/` (clean), ingest (see finding below), eval (Task 10's committed report)
+
+**Finding from this final review:** re-running ingest during this review produced 2103 chunks
+instead of the 2102 previously recorded — the upstream `tiangolo/fastapi` `master` branch had
+drifted slightly since first ingestion. Checking the raw Chroma DB row count (2113) against the
+freshly-computed current corpus (2103) revealed 10 orphaned vectors: `index_chunks()` upserted
+on matching content-hash ID but never deleted IDs that fell out of the corpus when a doc's
+content changed upstream, so old superseded chunks were never removed. Fixed in
+`indexer.py`/`index_chunks()` by deleting any existing collection ID absent from the current
+run's chunk set; re-ingested and confirmed the DB total now exactly matches the reported chunk
+count (2103 = 2103), stable across a repeat run. 2 new unit tests added
+(`test_indexer.py`) covering stale-ID deletion and the no-stale-IDs case (5/5 passing).
 
 **Dependencies:** All previous tasks
 
@@ -422,6 +435,40 @@ every SPEC.md Success Criteria item is actually met.
 ---
 
 ## Checkpoint: Complete
-- [ ] All SPEC.md success criteria verified
-- [ ] `uv run pytest` and `uv run ruff check .` pass clean
-- [ ] Ready for human review / portfolio use
+
+**SPEC.md Success Criteria, verified individually:**
+
+- **`docker build` + `docker run --env-file .env` serves a working API with no manual steps
+  beyond supplying API keys.** — **NOT independently verified.** Docker isn't installed in this
+  development environment. The Dockerfile's dependency-install and runtime sequence (`uv sync
+  --frozen --no-install-project --no-dev`, then with source, then `uvicorn`) was replicated in
+  an isolated venv outside Docker and confirmed working (`/health` → 200, `/query` → grounded
+  answer) — see Task 8. An actual `docker build`/`docker run` still needs to be run by a human
+  or in an environment with Docker available before this bullet can be marked fully met.
+- **`uv run python scripts/ingest.py` chunks and indexes the FastAPI docs corpus into Chroma,
+  and is idempotent (re-running does not duplicate vectors).** ✅ Verified — re-ran ingest twice
+  consecutively during this review, DB row count stable at 2103 both times, exactly matching
+  the freshly-computed current corpus size (see Task 12's stale-vector finding above; the fix
+  was required for this bullet to be genuinely true, not just true for unchanged-content reruns).
+- **`POST /query` with a FastAPI-docs question returns a grounded answer plus cited source
+  chunks in a reasonable time (target: under ~5s per query).** ✅ Verified — real curl checks in
+  Tasks 7 and this review returned grounded, cited answers; warm-request latency measured at
+  3.3s and 4.0s (first request after process start is ~12s due to one-time embedding-model
+  load, which is expected and documented in the README, not a violation of the per-query target).
+- **`uv run python -m rag_project.eval.run_eval` produces a report with faithfulness, answer
+  relevance, context precision, and context recall scores over the ~20-30 question eval set.**
+  ✅ Verified — Task 10's full 25-question run produced
+  `reports/eval/eval_report_20260714T191400Z.json` with all four metrics, per-question and
+  averaged.
+- **`uv run pytest` (unit tests) and `uv run ruff check` both pass clean.** ✅ Verified — 33
+  passed, 4 deselected (integration); ruff and mypy both clean.
+- **README documents setup, ingestion, running the API, and running eval clearly enough for a
+  freelance client or portfolio reviewer to run the project themselves.** ✅ `README.md` written
+  covering setup, ingestion, dev server, Docker (with the verification caveat above stated
+  honestly), eval harness, tests, and lint/type-check commands.
+
+- [x] All SPEC.md success criteria verified (5 of 6 fully verified; Docker build/run flagged
+      above as not independently run in this environment)
+- [x] `uv run pytest` and `uv run ruff check .` pass clean
+- [ ] Ready for human review / portfolio use — pending a human (or Docker-available environment)
+      confirming the `docker build`/`docker run` bullet above
