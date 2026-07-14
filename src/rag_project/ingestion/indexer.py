@@ -26,7 +26,13 @@ def get_vector_store(persist_dir: str, embedding_model: str) -> Chroma:
 
 def index_chunks(chunks: list[Chunk], persist_dir: str, embedding_model: str) -> int:
     """Embed and upsert chunks into the persisted Chroma collection. Chroma
-    metadata can't hold None, so a missing heading is stored as ''."""
+    metadata can't hold None, so a missing heading is stored as ''.
+
+    Chunk IDs are content-hashed, so when a source doc changes upstream
+    between ingest runs, its old chunks get new IDs and the stale ones
+    would otherwise never be removed from the collection. Deleting any
+    existing ID absent from this run's chunk set keeps the collection in
+    sync with the corpus as fetched right now."""
     if not chunks:
         return 0
 
@@ -36,4 +42,10 @@ def index_chunks(chunks: list[Chunk], persist_dir: str, embedding_model: str) ->
     metadatas = [{"source_path": c.source_path, "heading": c.heading or ""} for c in chunks]
 
     store.add_texts(texts=texts, metadatas=metadatas, ids=ids)
+
+    existing_ids = set(store.get(include=[])["ids"])
+    stale_ids = existing_ids - set(ids)
+    if stale_ids:
+        store.delete(ids=list(stale_ids))
+
     return len(chunks)
