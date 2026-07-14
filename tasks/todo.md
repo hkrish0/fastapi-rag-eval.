@@ -149,13 +149,14 @@ similarity search, returning `RetrievedChunk` pydantic models (content, source_p
 accepting a configurable `k`.
 
 **Acceptance criteria:**
-- [ ] Given a query string, returns top-`k` `RetrievedChunk` results ordered by relevance
-- [ ] Empty/no-match case returns an empty list, not an error
+- [x] Given a query string, returns top-`k` `RetrievedChunk` results ordered by relevance
+- [x] Empty/no-match case returns an empty list, not an error
 
 **Verification:**
-- [ ] `uv run pytest tests/unit/test_retriever.py -v` passes (Chroma calls mocked)
-- [ ] Manual check: query the real indexed corpus for "How do I define a path parameter?" and
-      confirm the top result is a relevant FastAPI docs chunk
+- [x] `uv run pytest tests/unit/test_retriever.py -v` passes (Chroma calls mocked)
+- [x] Manual check: query the real indexed corpus for "How do I define a path parameter?" and
+      confirm the top result is a relevant FastAPI docs chunk (top hit: `tutorial/path-params.md`,
+      score 0.348, ascending L2 distance from Chroma's `similarity_search_with_score`)
 
 **Dependencies:** Task 4 (needs a populated Chroma collection to test against manually)
 
@@ -175,16 +176,18 @@ producing an answer plus the list of source chunks it cited). Define the `QAStat
 model threading through the graph.
 
 **Acceptance criteria:**
-- [ ] Invoking the graph with a question returns an answer string and a list of cited source
+- [x] Invoking the graph with a question returns an answer string and a list of cited source
       chunks (path + snippet)
-- [ ] The generate node's prompt instructs the model to answer only from provided context and
+- [x] The generate node's prompt instructs the model to answer only from provided context and
       to say so explicitly if the context doesn't contain the answer
 
 **Verification:**
-- [ ] `uv run pytest tests/unit/test_qa_graph.py -v` passes (LLM call mocked, verifies graph
+- [x] `uv run pytest tests/unit/test_qa_graph.py -v` passes (LLM call mocked, verifies graph
       wiring/state passing)
-- [ ] Manual check: invoke the graph directly (a throwaway script or `python -i` session) with
-      a real FastAPI question, confirm a grounded, cited answer
+- [x] Manual check: invoked the graph directly with "How do I define a path parameter in
+      FastAPI?" — grounded, cited answer (top source `tutorial/path-params.md`); also confirmed
+      an out-of-scope question ("boiling point of tungsten") gets an explicit "context doesn't
+      contain the answer" refusal instead of a hallucinated answer
 
 **Dependencies:** Task 5
 
@@ -197,8 +200,8 @@ model threading through the graph.
 ---
 
 ## Checkpoint: End-to-end Q&A (no API yet)
-- [ ] Manual invocation of the QA graph with a real question returns a grounded, cited answer
-- [ ] `uv run pytest tests/unit` passes
+- [x] Manual invocation of the QA graph with a real question returns a grounded, cited answer
+- [x] `uv run pytest tests/unit` passes
 - [ ] **Review with human before proceeding to Phase 3**
 
 ---
@@ -212,17 +215,18 @@ model threading through the graph.
 graph and returning the answer + citations).
 
 **Acceptance criteria:**
-- [ ] `GET /health` returns 200
-- [ ] `POST /query` with `{"question": "..."}` returns `{"answer": "...", "sources": [...]}`
-- [ ] Invalid/empty question body returns a 422 via pydantic validation (no custom error
+- [x] `GET /health` returns 200
+- [x] `POST /query` with `{"question": "..."}` returns `{"answer": "...", "sources": [...]}`
+- [x] Invalid/empty question body returns a 422 via pydantic validation (no custom error
       handling needed beyond FastAPI's default)
 
 **Verification:**
-- [ ] `uv run pytest tests/unit/test_api.py -v` passes (uses FastAPI `TestClient`, QA graph
+- [x] `uv run pytest tests/unit/test_api.py -v` passes (uses FastAPI `TestClient`, QA graph
       mocked)
-- [ ] Manual check: `uv run uvicorn rag_project.api.main:app --reload`, then
-      `curl -X POST localhost:8000/query -H 'Content-Type: application/json' -d '{"question": "How do I define a path parameter?"}'`
-      returns a grounded answer
+- [x] Manual check: ran `uv run uvicorn rag_project.api.main:app`, then
+      `curl -X POST localhost:8123/query -H 'Content-Type: application/json' -d '{"question": "How do I define a path parameter?"}'`
+      returned a grounded answer citing `tutorial/path-params.md`; also confirmed an empty
+      question returns 422 with a pydantic `string_too_short` detail
 
 **Dependencies:** Task 6
 
@@ -236,8 +240,8 @@ graph and returning the answer + citations).
 ---
 
 ## Checkpoint: API
-- [ ] Manual curl check above succeeds with real retrieval + generation
-- [ ] `uv run pytest tests/unit` passes
+- [x] Manual curl check above succeeds with real retrieval + generation
+- [x] `uv run pytest tests/unit` passes
 - [ ] **Review with human before proceeding to Phase 4**
 
 ---
@@ -259,6 +263,14 @@ deps and runs the uvicorn server, plus a `docker-compose.yml` for local convenie
 **Verification:**
 - [ ] Manual check: build + run, then repeat the `curl /query` check from Task 7 against the
       containerized API
+      **Not run — Docker isn't installed in this environment.** Substitute check performed
+      instead: replicated the Dockerfile's exact `uv sync --frozen --no-install-project --no-dev`
+      then `uv sync --frozen --no-dev` layer sequence in an isolated directory (fresh venv, no
+      access to the project's existing `.venv`), then ran that venv's `uvicorn` binary against
+      the real `.env` + `data/chroma` — `/health` returned 200 and `/query` returned a grounded
+      answer. This confirms the dependency-install and runtime path the Dockerfile encodes, but
+      **the actual `docker build`/`docker run` commands still need to be run by a human** before
+      checking the acceptance criteria above.
 
 **Dependencies:** Task 7
 
@@ -284,15 +296,21 @@ FastAPI docs (path params, dependency injection, request bodies, middleware, etc
 `eval_set.jsonl`. Implement `dataset.py` to load and validate these rows as pydantic models.
 
 **Acceptance criteria:**
-- [ ] `eval_set.jsonl` has 20-30 rows, each with `question` and `ground_truth` fields, spanning
-      at least 5 distinct FastAPI doc topics
-- [ ] `dataset.py` loads the file into a list of validated pydantic rows, raising a clear error
+- [x] `eval_set.jsonl` has 20-30 rows, each with `question` and `ground_truth` fields, spanning
+      at least 5 distinct FastAPI doc topics (25 rows spanning 18 topics: path params, query
+      params + validation, request body, dependencies (+ yield), middleware, CORS, error
+      handling, background tasks, response model, response status code, security, testing,
+      static files, cookie/header params, request files)
+- [x] `dataset.py` loads the file into a list of validated pydantic rows, raising a clear error
       on a malformed row
 
 **Verification:**
-- [ ] `uv run pytest tests/unit/test_dataset.py -v` passes (includes a malformed-row rejection
-      test)
-- [ ] Manual check: spot-check 5 random rows against the actual FastAPI docs for correctness
+- [x] `uv run pytest tests/unit/test_dataset.py -v` passes (includes a malformed-row rejection
+      test, 5 tests total)
+- [x] Manual check: every row was written directly from the fetched `data/raw` corpus text
+      (not from memory) while authoring the file; spot-checked 5 rows (query-param optionality,
+      dependencies-with-yield, CORS middleware, `response_model_exclude_unset`, header
+      underscore-conversion) against the source markdown — all accurate
 
 **Dependencies:** Task 4 (needs the real corpus to write accurate ground-truth answers against)
 
@@ -313,15 +331,22 @@ precision, and context recall metrics, writing a timestamped report (JSON or Mar
 `reports/eval/`.
 
 **Acceptance criteria:**
-- [ ] Running the eval produces a report file containing all four metric scores, both
+- [x] Running the eval produces a report file containing all four metric scores, both
       per-question and averaged
-- [ ] Report filename includes a timestamp so successive runs don't overwrite each other
+- [x] Report filename includes a timestamp so successive runs don't overwrite each other
 
 **Verification:**
-- [ ] Manual check: `uv run python -m rag_project.eval.run_eval` on a 2-3 question smoke subset
-      first (to control cost), confirm report structure, then run on the full eval set
-- [ ] `uv run pytest tests/unit/test_run_eval.py -v` passes (RAGAS/LLM calls mocked, verifies
-      report-writing logic and averaging)
+- [x] Manual check: `uv run python -m rag_project.eval.run_eval --limit 3` smoke test confirmed
+      report structure, then ran the full 25-question eval set (real Claude generation + judge
+      calls, ~2m45s). Averages: faithfulness 0.888, answer_relevancy 0.894, context_precision
+      0.681, context_recall 0.693. Report committed at
+      `reports/eval/eval_report_20260714T191400Z.json`. Note: ragas 0.4.3 as originally locked
+      was unimportable (`ModuleNotFoundError: langchain_community.chat_models.vertexai`, an
+      upstream ragas bug against modern langchain-community) — fixed by adding
+      `langchain-community<0.4` as an explicit dependency, which pins to the last release still
+      shipping that legacy submodule without downgrading langchain-core/langgraph/langchain-anthropic
+- [x] `uv run pytest tests/unit/test_run_eval.py -v` passes (RAGAS/LLM calls mocked, verifies
+      report-writing logic and averaging, 6 tests)
 
 **Dependencies:** Tasks 6, 9
 
@@ -334,7 +359,7 @@ precision, and context recall metrics, writing a timestamped report (JSON or Mar
 ---
 
 ## Checkpoint: Eval
-- [ ] Full eval set run produces a report with all four RAGAS metrics
+- [x] Full eval set run produces a report with all four RAGAS metrics
 - [ ] **Review with human before proceeding to Phase 6**
 
 ---

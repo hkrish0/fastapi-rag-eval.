@@ -23,9 +23,10 @@ Format:            uv run ruff format .
 Type check:        uv run mypy src/ scripts/
 ```
 
-Not yet implemented (see `tasks/todo.md` Phases 2-6): `uv run uvicorn rag_project.api.main:app`,
-`uv run python -m rag_project.eval.run_eval`, Docker commands. Don't assume these work until
-their tasks are checked off.
+`uv run uvicorn rag_project.api.main:app` and `uv run python -m rag_project.eval.run_eval` are
+implemented (Tasks 7, 10). Docker build/run themselves are not yet verified in this environment
+(no Docker installed) — see `tasks/todo.md` Task 8. Check `tasks/todo.md` for what's checked off
+before assuming a component exists.
 
 `uv run pytest` only runs `tests/unit` by default — `pyproject.toml`'s `addopts` excludes the
 `integration` marker because integration tests hit the real Anthropic API and cost money. Run
