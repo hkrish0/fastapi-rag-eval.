@@ -374,11 +374,17 @@ calls, marked `@pytest.mark.integration` and excluded from the default `pytest` 
 `pyproject.toml`/`pytest.ini` config.
 
 **Acceptance criteria:**
-- [ ] `uv run pytest` (default) does not run these tests
-- [ ] `uv run pytest -m integration` runs them and they pass against the real corpus
+- [x] `uv run pytest` (default) does not run these tests
+- [x] `uv run pytest -m integration` runs them and they pass against the real corpus
 
 **Verification:**
-- [ ] Both commands above produce the expected inclusion/exclusion behavior
+- [x] Both commands above produce the expected inclusion/exclusion behavior: default run shows
+      "31 passed, 4 deselected"; `-m integration` shows "4 passed, 31 deselected" (real Chroma +
+      real Anthropic API, ~40s). Covers: retriever returns a relevant chunk for a known query,
+      the QA graph gives a grounded cited answer for a real question, the QA graph declines an
+      out-of-scope question instead of hallucinating, and the full `/query` endpoint works
+      end-to-end with no mocks. pytest marker config (`addopts = "-m 'not integration'"`) was
+      already in place from Task 1, so only the test file itself was new.
 
 **Dependencies:** Tasks 6, 7
 
